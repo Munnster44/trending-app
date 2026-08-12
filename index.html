@@ -1,0 +1,659 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Multi-District Membership Trending v2.1.2</title>
+<style>
+:root{--red:#b91c1c;--red2:#7f1d1d;--bg:#f5f7fa;--card:#fff;--text:#1f2937;--muted:#64748b;--border:#d8dee8;--good:#166534;--bad:#991b1b;--blue:#1d4ed8}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text)}
+header{background:linear-gradient(135deg,var(--red2),var(--red));color:white;padding:18px 22px}
+header h1{margin:0;font-size:1.55rem} header p{margin:5px 0 0;opacity:.9}
+.wrap{max-width:1450px;margin:auto;padding:18px}
+.toolbar,.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:16px}
+.toolbar{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+button,.file-label{border:0;border-radius:8px;padding:10px 14px;font-weight:700;cursor:pointer;background:var(--red);color:white}
+.secondary{background:#475569} .light{background:#e2e8f0;color:#1e293b} .danger{background:#991b1b} .blue{background:var(--blue)}
+.file-label input{display:none}
+.district-bar{display:grid;grid-template-columns:minmax(260px,1fr) auto;gap:12px;align-items:end}
+.district-actions{display:flex;gap:8px;flex-wrap:wrap}
+.field{margin-bottom:10px} .field label{display:block;font-size:.9rem;font-weight:700;margin-bottom:4px}
+.field input,.field select,.field textarea{width:100%;padding:9px;border:1px solid #aeb8c6;border-radius:7px;font-size:1rem;background:white}
+.field textarea{min-height:150px;resize:vertical}
+.manager{display:none;border-top:1px solid var(--border);margin-top:14px;padding-top:14px}
+.manager.open{display:block}
+.manager-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.help{font-size:.87rem;color:var(--muted);line-height:1.45}
+.grid{display:grid;grid-template-columns:360px 1fr;gap:16px}
+.card h2{font-size:1.1rem;margin:0 0 12px} .entry-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.metrics{display:grid;grid-template-columns:repeat(4,minmax(130px,1fr));gap:10px;margin-bottom:16px}
+.metric{background:white;border:1px solid var(--border);border-radius:10px;padding:12px}
+.metric small{display:block;color:var(--muted)} .metric strong{font-size:1.35rem;display:block;margin-top:5px}
+.chart-controls{display:flex;gap:12px;flex-wrap:wrap;align-items:end;margin-bottom:10px}
+.chart-controls label{font-size:.88rem;font-weight:700} .chart-controls select{display:block;margin-top:4px;padding:8px;border:1px solid #aeb8c6;border-radius:7px}
+.canvas-wrap{position:relative;width:100%;height:430px;border:1px solid var(--border);border-radius:9px;background:white;padding:8px}
+canvas{width:100%;height:100%}
+.table-wrap{overflow:auto;max-height:520px;border:1px solid var(--border);border-radius:9px}
+table{border-collapse:collapse;width:max-content;min-width:100%;font-size:.88rem}
+th,td{padding:8px 9px;border-bottom:1px solid #e4e8ee;border-right:1px solid #edf0f4;text-align:right;white-space:nowrap}
+th{position:sticky;top:0;background:#eef2f7;z-index:2}
+th:first-child,td:first-child{text-align:left;position:sticky;left:0;background:inherit}
+th:first-child{z-index:3;background:#eef2f7} tr:nth-child(even) td{background:#fafbfc}
+.status{font-size:.9rem;color:var(--muted);margin-left:auto} .positive{color:var(--good)} .negative{color:var(--bad)}
+.badge{display:inline-block;padding:4px 8px;border-radius:999px;background:#fee2e2;color:#7f1d1d;font-weight:700;font-size:.8rem;margin-left:8px}
+footer{text-align:center;color:var(--muted);padding:12px 0 22px}
+.print-all-squadrons{display:none} .print-squadron-chart{break-inside:avoid;page-break-inside:avoid;margin:0 0 20px}
+.print-squadron-chart h2{font-size:18px;margin:0 0 8px;break-after:avoid;page-break-after:avoid} .print-squadron-chart canvas{display:block;width:100%;height:360px;border:1px solid var(--border)}
+
+.readme-card details{border:1px solid var(--border);border-radius:10px;background:#fafbfc;padding:0}
+.readme-card summary{cursor:pointer;font-weight:700;padding:12px 14px;background:#eef2f7;border-radius:10px}
+.readme-content{padding:14px 18px;line-height:1.55}
+.readme-content h3{margin:16px 0 6px;font-size:1rem}
+.readme-content ul,.readme-content ol{margin:6px 0 12px 22px}
+.readme-content code{background:#e2e8f0;padding:1px 5px;border-radius:4px}
+
+@media(max-width:900px){.grid{grid-template-columns:1fr}.metrics{grid-template-columns:1fr 1fr}.canvas-wrap{height:360px}.district-bar,.manager-grid{grid-template-columns:1fr}}
+@media print{
+header,.toolbar,.entry-card,.table-card,.chart-controls,footer,.district-card,.readme-card{display:none!important}
+.wrap{padding:0}
+.card{border:0;box-shadow:none}
+.grid{display:block}
+.metrics{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:10px;
+  margin:0 0 16px
+}
+.metric{
+  break-inside:avoid-page;
+  page-break-inside:avoid
+}
+
+/* Keep every main chart title with its chart on the same printed page */
+.grid > section:last-of-type > section.card{
+  display:block;
+  break-inside:avoid-page;
+  page-break-inside:avoid;
+  break-before:page;
+  page-break-before:always;
+  margin:0 0 16px;
+  padding:0
+}
+.grid > section:last-of-type > section.card:first-of-type{
+  break-before:auto;
+  page-break-before:auto
+}
+.grid > section:last-of-type > section.card h2{
+  display:block;
+  margin:0 0 10px;
+  break-after:avoid-page;
+  page-break-after:avoid;
+  break-inside:avoid-page;
+  page-break-inside:avoid
+}
+.canvas-wrap{
+  height:650px;
+  border:0;
+  padding:0;
+  margin:0;
+  break-inside:avoid-page;
+  page-break-inside:avoid
+}
+.canvas-wrap canvas{
+  display:block;
+  width:100%;
+  height:100%
+}
+
+/* Printed all-squadron report */
+.print-all-squadrons{
+  display:block!important;
+  break-before:page;
+  page-break-before:always
+}
+.print-all-squadrons>h1{font-size:24px;margin:18px 0 6px}
+.print-note{margin:0 0 16px;color:#475569}
+.print-squadron-chart{
+  break-before:page;
+  page-break-before:always;
+  break-after:auto;
+  page-break-after:auto;
+  break-inside:avoid-page;
+  page-break-inside:avoid;
+  margin:0 0 20px;
+  padding-top:8px
+}
+.print-squadron-chart:first-child{
+  break-before:auto;
+  page-break-before:auto
+}
+.print-squadron-chart h2{
+  font-size:18px;
+  margin:0 0 10px;
+  break-after:avoid-page;
+  page-break-after:avoid;
+  break-inside:avoid-page;
+  page-break-inside:avoid
+}
+.print-squadron-chart canvas{
+  display:block;
+  width:100%;
+  height:500px;
+  border:0;
+  break-before:avoid-page;
+  page-break-before:avoid
+}
+}
+</style>
+</head>
+<body>
+<header><h1 id="appTitle">Multi-District Membership Trending</h1><p>Maintain independent membership histories for multiple districts and their squadrons.</p></header>
+<div class="wrap">
+
+<section class="card district-card">
+  <div class="district-bar">
+    <div class="field" style="margin:0">
+      <label for="districtSelect">Active district</label>
+      <select id="districtSelect"></select>
+    </div>
+    <div class="district-actions">
+      <button id="newDistrict" class="blue">New District</button>
+      <button id="editDistrict" class="secondary">Edit District / Squadrons</button>
+      <button id="deleteDistrict" class="danger">Delete District</button>
+    </div>
+  </div>
+  <div id="districtManager" class="manager">
+    <div class="manager-grid">
+      <div>
+        <div class="field"><label for="districtName">District name</label><input id="districtName" placeholder="Example: Eastern Ontario District"></div>
+        <p class="help">Creating a new district makes a completely separate interface and history. Switching districts instantly changes the entry fields, tables and graphs.</p>
+      </div>
+      <div>
+        <div class="field"><label for="districtSquadrons">Squadrons — one per line</label><textarea id="districtSquadrons" placeholder="Squadron One&#10;Squadron Two&#10;Squadron Three"></textarea></div>
+      </div>
+    </div>
+    <div class="actions">
+      <button id="saveDistrict">Save District Setup</button>
+      <button id="cancelDistrict" class="light">Cancel</button>
+    </div>
+  </div>
+</section>
+
+<section class="card readme-card">
+<details>
+<summary>README / Instructions</summary>
+<div class="readme-content">
+<h3>Purpose</h3>
+<p>This app tracks membership trends for multiple districts. Each district has its own squadron list, membership snapshots, graphs, table, CSV export and JSON backup.</p>
+
+<h3>1. Select or Create a District</h3>
+<ol>
+<li>Use <strong>Active District</strong> to switch between districts.</li>
+<li>Select <strong>New District</strong> to create another district.</li>
+<li>Enter the district name.</li>
+<li>Enter each squadron on a separate line.</li>
+<li>Select <strong>Save District Setup</strong>.</li>
+</ol>
+
+<h3>2. Edit a District or Squadron List</h3>
+<p>Select the district, then choose <strong>Edit District / Squadrons</strong>. You can rename the district, add new squadrons, or remove squadrons. Removing a squadron also removes that squadron column from the stored history for that district.</p>
+
+<h3>3. Add a Membership Snapshot</h3>
+<ol>
+<li>Select the district.</li>
+<li>Choose the snapshot date.</li>
+<li>Enter the membership number for each squadron.</li>
+<li>Select <strong>Save Entry</strong>.</li>
+<li>The entry count beside the district name confirms how many snapshots are stored for that district.</li>
+</ol>
+
+<h3>4. Edit or Delete an Existing Snapshot</h3>
+<p>Choose an entry from <strong>Select an existing entry</strong>. Load it, make changes, and select <strong>Save Entry</strong>. Use the delete buttons to remove a complete snapshot date.</p>
+
+<h3>5. Load a CSV</h3>
+<p><strong>Load CSV into Active District</strong> imports data into the currently selected district. The CSV may use either of these layouts:</p>
+<ul>
+<li><code>Date, Squadron 1, Squadron 2, ...</code></li>
+<li><code>Squadron, Date 1, Date 2, ...</code></li>
+</ul>
+<p>The app detects the squadron names from the file and builds the district interface from those columns.</p>
+
+<h3>6. Save an Individual District</h3>
+<p>After adding or changing entries, use <strong>Save Active District Files</strong>. This downloads a fresh CSV and JSON containing the current data for the selected district. Previously downloaded files are not automatically rewritten by the browser.</p>
+<ul>
+<li><strong>Save Active District JSON</strong> — JSON backup for the selected district.</li>
+<li><strong>Save Active District CSV</strong> — CSV export for the selected district.</li>
+</ul>
+
+<h3>7. Save All Districts</h3>
+<p><strong>Save All Districts</strong> creates one JSON workspace backup containing every district, every squadron list, and all membership history. Use <strong>Restore All Districts</strong> to reload that workspace later.</p>
+
+<h3>8. Browser Storage</h3>
+<p>The app also saves the current workspace in your browser's local storage. This helps retain your districts between sessions on the same computer and browser. JSON backups should still be kept as your permanent backup.</p>
+
+<h3>9. Graphs</h3>
+<ul>
+<li><strong>Graph 1</strong> — total membership trend for the selected district.</li>
+<li><strong>Graph 2</strong> — squadron trend lines, latest squadron comparison, or change by squadron.</li>
+<li><strong>Graph 3</strong> — all squadron membership totals for a selected snapshot date.</li>
+<li><strong>Graph 4</strong> — membership history for one selected squadron.</li>
+</ul>
+
+<h3>10. Printing</h3>
+<p>Select <strong>Print Graphs</strong> to create a printable report for the active district, including an individual membership-history graph for every squadron.</p>
+
+<h3>Recommended Backup Procedure</h3>
+<ol>
+<li>Save your new membership entry.</li>
+<li>Use <strong>Save Active District Files</strong> for the district you just updated.</li>
+<li>Periodically use <strong>Save All Districts</strong> for a complete workspace backup.</li>
+</ol>
+</div>
+</details>
+</section>
+
+<div class="toolbar">
+<label class="file-label">Load CSV into Active District<input id="loadCsv" type="file" accept=".csv,text/csv"></label>
+<button id="saveDistrictFiles">Save Active District Files</button>
+<button id="saveDistrictJson">Save Active District JSON</button>
+<label class="file-label secondary">Restore District JSON<input id="loadDistrictJson" type="file" accept=".json,application/json"></label>
+<button id="saveWorkspaceJson" class="blue">Save All Districts</button>
+<label class="file-label blue">Restore All Districts<input id="loadWorkspaceJson" type="file" accept=".json,application/json"></label>
+<button id="exportCsv" class="secondary">Save Active District CSV</button>
+<button id="printReport" class="light">Print Graphs</button>
+<span class="status" id="status">Ready</span>
+</div>
+
+<div class="grid">
+<section class="card entry-card">
+<h2>Add, Edit or Delete an Entry <span class="badge" id="entryDistrictBadge"></span> <span class="badge" id="recordCountBadge"></span></h2>
+<div class="field"><label for="existingEntry">Select an existing entry</label><select id="existingEntry"><option value="">— New entry —</option></select></div>
+<div class="actions" style="margin-top:0;margin-bottom:12px"><button id="loadEntry" class="secondary">Load Selected Entry</button><button id="deleteSelectedEntry" class="danger">Delete Selected Entry</button></div>
+<div class="field"><label for="entryDate">Snapshot date</label><input id="entryDate" type="date"></div>
+<div class="entry-grid" id="entryFields"></div>
+<div class="actions"><button id="addRecord">Save Entry</button><button id="clearForm" class="light">New / Clear</button><button id="deleteRecord" class="danger">Delete Loaded Entry</button></div>
+<p class="help">Each district keeps its own snapshot dates and membership counts.</p>
+</section>
+
+<section>
+<div class="metrics">
+<div class="metric"><small>Latest snapshot</small><strong id="latestDate">—</strong></div>
+<div class="metric"><small>Latest district total</small><strong id="latestTotal">—</strong></div>
+<div class="metric"><small>Change from prior</small><strong id="latestChange">—</strong></div>
+<div class="metric"><small>Change from first</small><strong id="overallChange">—</strong></div>
+</div>
+
+<section class="card"><h2 id="graph1Title">Graph 1 — District Total Membership</h2>
+<div class="chart-controls"><div><label for="dateRange">Time range</label><select id="dateRange"><option value="all">All dates</option><option value="10">Last 10 snapshots</option><option value="20">Last 20 snapshots</option><option value="365">Last year</option><option value="1095">Last 3 years</option></select></div></div>
+<div class="canvas-wrap"><canvas id="totalChart"></canvas></div></section>
+
+<section class="card"><h2>Graph 2 — Squadron Membership Trending</h2>
+<div class="chart-controls"><div><label for="chartType">Graph type</label><select id="chartType"><option value="line">Squadron trend lines</option><option value="latest">Latest squadron comparison</option><option value="change">Change by squadron</option></select></div>
+<div><label for="seriesSelect">Squadron</label><select id="seriesSelect"><option value="all">All squadrons</option></select></div></div>
+<div class="canvas-wrap"><canvas id="squadronChart"></canvas></div></section>
+
+<section class="card"><h2>Graph 3 — All Squadrons by Entry Date</h2>
+<div class="chart-controls"><div><label for="entryBarDate">Entry date</label><select id="entryBarDate"></select></div></div>
+<div class="canvas-wrap"><canvas id="entryBarChart"></canvas></div></section>
+
+<section class="card"><h2>Graph 4 — Individual Squadron by Entry</h2>
+<div class="chart-controls"><div><label for="individualSquadron">Squadron</label><select id="individualSquadron"></select></div><div><label for="individualRange">Time range</label><select id="individualRange"><option value="all">All entries</option><option value="10">Last 10 entries</option><option value="20">Last 20 entries</option></select></div></div>
+<div class="canvas-wrap"><canvas id="individualBarChart"></canvas></div></section>
+</section>
+</div>
+
+<section id="printAllSquadrons" class="print-all-squadrons"><h1 id="printDistrictTitle">Individual Squadron Membership History</h1><p class="print-note">A separate graph is included for every squadron.</p><div id="printSquadronCharts"></div></section>
+<section class="card table-card"><h2 id="tableTitle">Data Table</h2><div class="table-wrap"><table id="dataTable"></table></div></section>
+</div>
+<footer>© Glen Carruthers • Version 2.1.2</footer>
+
+<script>
+const NIAGARA_ORIGINAL={"squadrons":["Burlington","Fort Erie","Grand River","Guelph","Hamilton","Port Colborne","Port Dalhousie","Port Dover"],"records":[{"date":"2019-12-01","Burlington":159,"Fort Erie":84,"Grand River":310,"Guelph":108,"Hamilton":173,"Port Colborne":42,"Port Dalhousie":135,"Port Dover":197},{"date":"2022-08-15","Burlington":114,"Fort Erie":46,"Grand River":210,"Guelph":53,"Hamilton":108,"Port Colborne":24,"Port Dalhousie":78,"Port Dover":109},{"date":"2022-09-07","Burlington":111,"Fort Erie":42,"Grand River":197,"Guelph":54,"Hamilton":106,"Port Colborne":24,"Port Dalhousie":79,"Port Dover":106},{"date":"2022-09-15","Burlington":113,"Fort Erie":45,"Grand River":197,"Guelph":55,"Hamilton":108,"Port Colborne":24,"Port Dalhousie":82,"Port Dover":109},{"date":"2022-09-20","Burlington":113,"Fort Erie":45,"Grand River":196,"Guelph":55,"Hamilton":106,"Port Colborne":24,"Port Dalhousie":81,"Port Dover":109},{"date":"2022-09-29","Burlington":112,"Fort Erie":45,"Grand River":195,"Guelph":55,"Hamilton":109,"Port Colborne":24,"Port Dalhousie":77,"Port Dover":109},{"date":"2022-10-19","Burlington":112,"Fort Erie":45,"Grand River":196,"Guelph":53,"Hamilton":110,"Port Colborne":23,"Port Dalhousie":77,"Port Dover":109},{"date":"2022-10-24","Burlington":112,"Fort Erie":45,"Grand River":196,"Guelph":53,"Hamilton":110,"Port Colborne":23,"Port Dalhousie":74,"Port Dover":110},{"date":"2022-11-09","Burlington":112,"Fort Erie":45,"Grand River":191,"Guelph":54,"Hamilton":112,"Port Colborne":22,"Port Dalhousie":74,"Port Dover":110},{"date":"2022-11-28","Burlington":114,"Fort Erie":45,"Grand River":192,"Guelph":53,"Hamilton":113,"Port Colborne":22,"Port Dalhousie":76,"Port Dover":109},{"date":"2022-12-02","Burlington":116,"Fort Erie":45,"Grand River":192,"Guelph":53,"Hamilton":113,"Port Colborne":22,"Port Dalhousie":76,"Port Dover":109},{"date":"2023-01-27","Burlington":113,"Fort Erie":46,"Grand River":194,"Guelph":54,"Hamilton":115,"Port Colborne":22,"Port Dalhousie":79,"Port Dover":107},{"date":"2023-02-11","Burlington":111,"Fort Erie":45,"Grand River":192,"Guelph":55,"Hamilton":118,"Port Colborne":20,"Port Dalhousie":80,"Port Dover":106},{"date":"2023-03-21","Burlington":110,"Fort Erie":45,"Grand River":190,"Guelph":55,"Hamilton":117,"Port Colborne":19,"Port Dalhousie":80,"Port Dover":105},{"date":"2023-04-21","Burlington":111,"Fort Erie":44,"Grand River":191,"Guelph":55,"Hamilton":119,"Port Colborne":19,"Port Dalhousie":82,"Port Dover":104},{"date":"2023-06-11","Burlington":109,"Fort Erie":35,"Grand River":175,"Guelph":47,"Hamilton":115,"Port Colborne":18,"Port Dalhousie":72,"Port Dover":99},{"date":"2023-08-06","Burlington":110,"Fort Erie":34,"Grand River":176,"Guelph":45,"Hamilton":116,"Port Colborne":19,"Port Dalhousie":70,"Port Dover":98},{"date":"2023-10-20","Burlington":112,"Fort Erie":34,"Grand River":176,"Guelph":46,"Hamilton":117,"Port Colborne":20,"Port Dalhousie":71,"Port Dover":103},{"date":"2023-11-30","Burlington":115,"Fort Erie":34,"Grand River":176,"Guelph":46,"Hamilton":117,"Port Colborne":20,"Port Dalhousie":72,"Port Dover":104},{"date":"2023-12-25","Burlington":114,"Fort Erie":34,"Grand River":181,"Guelph":46,"Hamilton":119,"Port Colborne":20,"Port Dalhousie":72,"Port Dover":102},{"date":"2024-02-29","Burlington":112,"Fort Erie":35,"Grand River":165,"Guelph":44,"Hamilton":114,"Port Colborne":21,"Port Dalhousie":71,"Port Dover":98},{"date":"2024-06-27","Burlington":112,"Fort Erie":36,"Grand River":168,"Guelph":46,"Hamilton":118,"Port Colborne":21,"Port Dalhousie":66,"Port Dover":106},{"date":"2024-09-07","Burlington":101,"Fort Erie":32,"Grand River":157,"Guelph":43,"Hamilton":110,"Port Colborne":16,"Port Dalhousie":61,"Port Dover":95},{"date":"2025-01-12","Burlington":102,"Fort Erie":32,"Grand River":146,"Guelph":42,"Hamilton":110,"Port Colborne":16,"Port Dalhousie":59,"Port Dover":98},{"date":"2025-06-16","Burlington":91,"Fort Erie":30,"Grand River":174,"Guelph":0,"Hamilton":108,"Port Colborne":14,"Port Dalhousie":57,"Port Dover":92},{"date":"2025-08-04","Burlington":86,"Fort Erie":30,"Grand River":170,"Guelph":1,"Hamilton":105,"Port Colborne":10,"Port Dalhousie":55,"Port Dover":91},{"date":"2025-08-11","Burlington":85,"Fort Erie":30,"Grand River":173,"Guelph":0,"Hamilton":105,"Port Colborne":10,"Port Dalhousie":55,"Port Dover":93},{"date":"2025-09-02","Burlington":86,"Fort Erie":29,"Grand River":170,"Guelph":0,"Hamilton":104,"Port Colborne":9,"Port Dalhousie":55,"Port Dover":94},{"date":"2026-04-21","Burlington":88,"Fort Erie":30,"Grand River":167,"Guelph":0,"Hamilton":105,"Port Colborne":11,"Port Dalhousie":50,"Port Dover":103}]};
+
+const STORAGE_KEY='multiDistrictMembershipTrendingV2';
+function clone(x){return JSON.parse(JSON.stringify(x))}
+function slug(s){return String(s||'district').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'district'}
+function makeId(){return 'd-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8)}
+function createNiagaraDistrict(){
+  return {id:'niagara',name:'Niagara District',squadrons:clone(NIAGARA_ORIGINAL.squadrons),records:clone(NIAGARA_ORIGINAL.records)};
+}
+let workspace={version:2,activeDistrictId:'niagara',districts:[createNiagaraDistrict()]};
+let editingOriginalDate='';
+let managerMode='edit';
+const $=id=>document.getElementById(id);
+const fmt=n=>Number(n).toLocaleString();
+const colors=['#b91c1c','#2563eb','#15803d','#9333ea','#ea580c','#0891b2','#4f46e5','#be123c','#ca8a04','#0f766e','#7c3aed','#c2410c'];
+
+function activeDistrict(){
+  return workspace.districts.find(d=>d.id===workspace.activeDistrictId) || workspace.districts[0];
+}
+function state(){return activeDistrict()}
+function saveLocal(){
+  try{localStorage.setItem(STORAGE_KEY,JSON.stringify(workspace))}catch(e){}
+}
+function loadLocal(){
+  try{
+    const d=JSON.parse(localStorage.getItem(STORAGE_KEY)||'null');
+    if(d&&Array.isArray(d.districts)&&d.districts.length){
+      workspace=d;
+      if(!workspace.districts.some(x=>x.id===workspace.activeDistrictId))workspace.activeDistrictId=workspace.districts[0].id;
+    }
+  }catch(e){}
+}
+function setStatus(t){$('status').textContent=t}
+function total(r){return state().squadrons.reduce((s,n)=>s+(Number(r[n])||0),0)}
+function sortRecords(){state().records.sort((a,b)=>a.date.localeCompare(b.date))}
+
+function init(){
+  editingOriginalDate='';
+  renderDistrictSelector();
+  buildDistrictInterface();
+  render();
+}
+function renderDistrictSelector(){
+  const sel=$('districtSelect');
+  sel.innerHTML=workspace.districts.map(d=>`<option value="${escapeHtml(d.id)}">${escapeHtml(d.name)}</option>`).join('');
+  sel.value=workspace.activeDistrictId;
+}
+function buildDistrictInterface(){
+  const d=state();
+  $('appTitle').textContent=d.name+' Membership Trending';
+  $('entryDistrictBadge').textContent=d.name;
+  $('recordCountBadge').textContent=d.records.length+' entr'+(d.records.length===1?'y':'ies');
+  $('graph1Title').textContent='Graph 1 — '+d.name+' Total Membership';
+  $('tableTitle').textContent=d.name+' Data Table';
+  $('printDistrictTitle').textContent=d.name+' — Individual Squadron Membership History';
+  $('entryDate').value=new Date().toISOString().slice(0,10);
+  $('entryFields').innerHTML=d.squadrons.map((s,i)=>`<div class="field"><label for="sq${i}">${escapeHtml(s)}</label><input id="sq${i}" type="number" min="0" step="1" data-squadron="${escapeAttr(s)}"></div>`).join('');
+  $('seriesSelect').innerHTML='<option value="all">All squadrons</option>'+d.squadrons.map(s=>`<option value="${escapeAttr(s)}">${escapeHtml(s)}</option>`).join('');
+  $('individualSquadron').innerHTML=d.squadrons.map(s=>`<option value="${escapeAttr(s)}">${escapeHtml(s)}</option>`).join('');
+}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function escapeAttr(s){return escapeHtml(s)}
+
+function render(){
+  sortRecords();
+  $('recordCountBadge').textContent=state().records.length+' entr'+(state().records.length===1?'y':'ies');
+  renderMetrics();renderTable();renderEntryManager();renderBarSelectors();drawCharts();saveLocal();
+}
+function renderEntryManager(){
+  const sel=$('existingEntry'),current=sel.value;
+  sel.innerHTML='<option value="">— New entry —</option>'+[...state().records].reverse().map(r=>`<option value="${r.date}">${new Date(r.date+'T12:00:00').toLocaleDateString()} — Total ${fmt(total(r))}</option>`).join('');
+  if(current&&state().records.some(r=>r.date===current))sel.value=current;
+}
+function renderMetrics(){
+  const rs=state().records,latest=rs[rs.length-1],prev=rs[rs.length-2],first=rs[0];
+  if(!latest){['latestDate','latestTotal','latestChange','overallChange'].forEach(id=>$(id).textContent='—');return}
+  $('latestDate').textContent=new Date(latest.date+'T12:00:00').toLocaleDateString();
+  $('latestTotal').textContent=fmt(total(latest));
+  const ch=prev?total(latest)-total(prev):0,all=first?total(latest)-total(first):0;
+  $('latestChange').textContent=(ch>=0?'+':'')+fmt(ch);$('latestChange').className=ch>=0?'positive':'negative';
+  $('overallChange').textContent=(all>=0?'+':'')+fmt(all);$('overallChange').className=all>=0?'positive':'negative';
+}
+function renderTable(){
+  let h='<thead><tr><th>Date</th><th>Total</th>'+state().squadrons.map(s=>`<th>${escapeHtml(s)}</th>`).join('')+'</tr></thead><tbody>';
+  [...state().records].reverse().forEach(r=>{h+=`<tr><td><button class="light edit-row" data-date="${r.date}" style="padding:5px 8px">${r.date}</button></td><td><strong>${fmt(total(r))}</strong></td>`+state().squadrons.map(s=>`<td>${fmt(r[s]||0)}</td>`).join('')+'</tr>'});
+  $('dataTable').innerHTML=h+'</tbody>';
+  document.querySelectorAll('.edit-row').forEach(b=>b.addEventListener('click',()=>loadForm(b.dataset.date)));
+}
+function loadForm(date){
+  const r=state().records.find(x=>x.date===date);if(!r)return;
+  editingOriginalDate=date;$('existingEntry').value=date;$('entryDate').value=date;
+  document.querySelectorAll('[data-squadron]').forEach(i=>i.value=r[i.dataset.squadron]??0);
+  window.scrollTo({top:0,behavior:'smooth'});setStatus('Editing '+state().name+' — '+date);
+}
+function clearForm(){
+  editingOriginalDate='';$('existingEntry').value='';document.querySelectorAll('[data-squadron]').forEach(i=>i.value='');
+  $('entryDate').value=new Date().toISOString().slice(0,10);setStatus('Ready for a new '+state().name+' entry');
+}
+function addRecord(){
+  const date=$('entryDate').value;if(!date){alert('Select a snapshot date.');return}
+  let rec={date};document.querySelectorAll('[data-squadron]').forEach(i=>rec[i.dataset.squadron]=Math.max(0,parseInt(i.value||0,10)));
+  const targetIx=state().records.findIndex(r=>r.date===date);
+  if(editingOriginalDate&&editingOriginalDate!==date){
+    if(targetIx>=0){alert('Another entry already uses '+date+'.');return}
+    const oldIx=state().records.findIndex(r=>r.date===editingOriginalDate);if(oldIx>=0)state().records.splice(oldIx,1);
+  }
+  const ix=state().records.findIndex(r=>r.date===date);if(ix>=0)state().records[ix]=rec;else state().records.push(rec);
+  editingOriginalDate=date;render();$('existingEntry').value=date;saveLocal();
+  setStatus((ix>=0?'Entry updated':'Entry added')+' in '+state().name+' — '+state().records.length+' total entries');
+}
+function deleteRecord(dateOverride){
+  const date=typeof dateOverride==='string'&&dateOverride?dateOverride:(editingOriginalDate||$('entryDate').value);
+  const ix=state().records.findIndex(r=>r.date===date);if(ix<0){alert('Load or select an existing entry first.');return}
+  if(confirm('Delete the full membership entry for '+new Date(date+'T12:00:00').toLocaleDateString()+'?')){
+    state().records.splice(ix,1);editingOriginalDate='';render();clearForm();setStatus('Entry deleted');
+  }
+}
+
+function openManager(mode){
+  managerMode=mode;
+  const d=state();
+  $('districtManager').classList.add('open');
+  if(mode==='new'){$('districtName').value='';$('districtSquadrons').value='';$('districtName').focus()}
+  else{$('districtName').value=d.name;$('districtSquadrons').value=d.squadrons.join('\n');$('districtName').focus()}
+}
+function closeManager(){$('districtManager').classList.remove('open')}
+function saveDistrictSetup(){
+  const name=$('districtName').value.trim();
+  const squadrons=[...new Set($('districtSquadrons').value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean))];
+  if(!name){alert('Enter a district name.');return}
+  if(!squadrons.length){alert('Enter at least one squadron.');return}
+  if(managerMode==='new'){
+    const d={id:makeId(),name,squadrons,records:[]};
+    workspace.districts.push(d);workspace.activeDistrictId=d.id;
+    renderDistrictSelector();buildDistrictInterface();render();closeManager();setStatus(name+' created');
+  }else{
+    const d=state(),oldSquadrons=[...d.squadrons];
+    const removed=oldSquadrons.filter(s=>!squadrons.includes(s));
+    if(removed.length&&d.records.length&&!confirm('The following squadron columns will be removed from this district history:\n\n'+removed.join('\n')+'\n\nContinue?'))return;
+    d.name=name;d.squadrons=squadrons;
+    d.records=d.records.map(r=>{
+      const nr={date:r.date};squadrons.forEach(s=>nr[s]=Number(r[s])||0);return nr;
+    });
+    renderDistrictSelector();buildDistrictInterface();render();closeManager();setStatus(name+' setup updated');
+  }
+}
+function deleteActiveDistrict(){
+  if(workspace.districts.length===1){alert('At least one district must remain.');return}
+  const d=state();
+  if(!confirm('Delete '+d.name+' and all of its stored membership history from this workspace?'))return;
+  workspace.districts=workspace.districts.filter(x=>x.id!==d.id);
+  workspace.activeDistrictId=workspace.districts[0].id;
+  renderDistrictSelector();buildDistrictInterface();render();setStatus(d.name+' deleted');
+}
+
+function filtered(){
+  let rs=[...state().records],range=$('dateRange').value;
+  if(range==='10'||range==='20')return rs.slice(-Number(range));
+  if(range!=='all'){const cutoff=new Date();cutoff.setDate(cutoff.getDate()-Number(range));rs=rs.filter(r=>new Date(r.date)>=cutoff)}
+  return rs;
+}
+function prepCanvas(id){
+  const canvas=$(id),rect=canvas.parentElement.getBoundingClientRect(),dpr=window.devicePixelRatio||1;
+  canvas.width=Math.max(600,rect.width-16)*dpr;canvas.height=Math.max(320,rect.height-16)*dpr;
+  const ctx=canvas.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);const W=canvas.width/dpr,H=canvas.height/dpr;
+  ctx.clearRect(0,0,W,H);return{ctx,W,H,pad:{l:62,r:24,t:34,b:70}};
+}
+function drawEmpty(ctx,W,H,msg){ctx.fillStyle='#64748b';ctx.font='16px Arial';ctx.textAlign='center';ctx.fillText(msg,W/2,H/2)}
+function drawCharts(){drawTotalChart();drawSquadronChart();drawEntryBarChart();drawIndividualBarChart()}
+function renderBarSelectors(){
+  const sel=$('entryBarDate'),latestDate=state().records.length?state().records[state().records.length-1].date:'';
+  sel.innerHTML=[...state().records].reverse().map(r=>`<option value="${r.date}">${new Date(r.date+'T12:00:00').toLocaleDateString()}</option>`).join('');
+  if(latestDate)sel.value=latestDate;
+}
+function drawEntryBarChart(){
+  const {ctx,W,H,pad}=prepCanvas('entryBarChart');const date=$('entryBarDate').value||(state().records.at(-1)?.date||'');
+  const r=state().records.find(x=>x.date===date);if(!r){drawEmpty(ctx,W,H,'No entries yet');return}
+  bars(ctx,W,H,pad,state().squadrons,state().squadrons.map(s=>Number(r[s])||0),'Members',false);
+  ctx.fillStyle='#334155';ctx.font='bold 14px Arial';ctx.textAlign='left';ctx.fillText('Entry: '+new Date(r.date+'T12:00:00').toLocaleDateString(),pad.l,pad.t-12);
+}
+function drawIndividualBarChart(){
+  const {ctx,W,H,pad}=prepCanvas('individualBarChart');const squad=$('individualSquadron').value||state().squadrons[0];
+  let rs=[...state().records],range=$('individualRange').value;if(range!=='all')rs=rs.slice(-Number(range));
+  if(!rs.length){drawEmpty(ctx,W,H,'No entries yet');return}
+  bars(ctx,W,H,pad,rs.map(r=>r.date),rs.map(r=>Number(r[squad])||0),'Members',true);
+  ctx.fillStyle='#334155';ctx.font='bold 14px Arial';ctx.textAlign='left';ctx.fillText(squad+' membership by entry',pad.l,pad.t-12);
+}
+function drawTotalChart(){
+  const {ctx,W,H,pad}=prepCanvas('totalChart'),rs=filtered();if(!rs.length){drawEmpty(ctx,W,H,'No entries yet');return}
+  lineChart(ctx,W,H,pad,rs.map(r=>r.date),[{name:state().name+' Total',vals:rs.map(total),color:colors[0]}]);
+}
+function drawSquadronChart(){
+  const {ctx,W,H,pad}=prepCanvas('squadronChart'),type=$('chartType').value,rs=filtered();
+  if(!rs.length){drawEmpty(ctx,W,H,'No entries yet');return}
+  let labels=[];
+  if(type==='latest'){const r=rs[rs.length-1];labels=state().squadrons;return bars(ctx,W,H,pad,labels,labels.map(s=>r[s]),'Members')}
+  if(type==='change'){const a=rs[0],b=rs[rs.length-1];labels=state().squadrons;return bars(ctx,W,H,pad,labels,labels.map(s=>(b[s]||0)-(a[s]||0)),'Member change')}
+  labels=rs.map(r=>r.date);const sel=$('seriesSelect').value,names=sel==='all'?state().squadrons:[sel];
+  const datasets=names.map((s,i)=>({name:s,vals:rs.map(r=>r[s]||0),color:colors[i%colors.length]}));lineChart(ctx,W,H,pad,labels,datasets);
+}
+function axes(ctx,W,H,p,max,label){
+  ctx.strokeStyle='#94a3b8';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(p.l,p.t);ctx.lineTo(p.l,H-p.b);ctx.lineTo(W-p.r,H-p.b);ctx.stroke();
+  ctx.font='12px Arial';ctx.fillStyle='#475569';ctx.textAlign='right';
+  for(let i=0;i<=5;i++){let y=H-p.b-(H-p.t-p.b)*i/5,v=Math.round(max*i/5);ctx.fillText(fmt(v),p.l-8,y+4);ctx.strokeStyle='#e2e8f0';ctx.beginPath();ctx.moveTo(p.l,y);ctx.lineTo(W-p.r,y);ctx.stroke()}
+  ctx.save();ctx.translate(16,H/2);ctx.rotate(-Math.PI/2);ctx.textAlign='center';ctx.fillText(label,0,0);ctx.restore();
+}
+function lineChart(ctx,W,H,p,labels,sets){
+  const max=Math.max(1,...sets.flatMap(s=>s.vals));axes(ctx,W,H,p,max,'Members');const cw=W-p.l-p.r,ch=H-p.t-p.b;
+  sets.forEach(s=>{ctx.strokeStyle=s.color;ctx.lineWidth=2;ctx.beginPath();s.vals.forEach((v,i)=>{const x=p.l+(labels.length===1?cw/2:cw*i/(labels.length-1)),y=H-p.b-ch*v/max;i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.stroke()});
+  const step=Math.max(1,Math.ceil(labels.length/8));ctx.fillStyle='#475569';ctx.textAlign='center';
+  labels.forEach((l,i)=>{if(i%step===0||i===labels.length-1){const x=p.l+(labels.length===1?cw/2:cw*i/(labels.length-1));ctx.save();ctx.translate(x,H-p.b+12);ctx.rotate(-.55);ctx.textAlign='right';ctx.fillText(l,0,0);ctx.restore()}});
+  let x=p.l;sets.forEach(s=>{ctx.fillStyle=s.color;ctx.fillRect(x,p.t-14,12,12);ctx.fillStyle='#334155';ctx.textAlign='left';ctx.fillText(s.name,x+17,p.t-4);x+=ctx.measureText(s.name).width+45});
+}
+function bars(ctx,W,H,p,labels,vals,label,uniform=false){
+  const max=Math.max(1,...vals.map(v=>Math.abs(Number(v)||0)));axes(ctx,W,H,p,max,label);const cw=W-p.l-p.r,ch=H-p.t-p.b,bw=Math.max(12,cw/Math.max(1,labels.length)*.62);
+  vals.forEach((v,i)=>{v=Number(v)||0;const x=p.l+cw*(i+.5)/labels.length-bw/2,y=H-p.b-ch*Math.abs(v)/max;ctx.fillStyle=v<0?'#991b1b':(uniform?colors[0]:colors[i%colors.length]);ctx.fillRect(x,y,bw,H-p.b-y);ctx.fillStyle='#334155';ctx.textAlign='center';ctx.fillText((v>0?'+':'')+fmt(v),x+bw/2,y-5);ctx.save();ctx.translate(x+bw/2,H-p.b+12);ctx.rotate(-.55);ctx.textAlign='right';ctx.fillText(labels[i],0,0);ctx.restore()});
+}
+
+function preparePrintReport(){
+  const host=$('printSquadronCharts');host.innerHTML='';const range=$('individualRange').value;
+  let rs=[...state().records];if(range!=='all')rs=rs.slice(-Number(range));
+  state().squadrons.forEach((squad,index)=>{
+    const section=document.createElement('section');section.className='print-squadron-chart';
+    const title=document.createElement('h2');title.textContent=(index+1)+'. '+squad+' Membership by Entry';
+    const canvas=document.createElement('canvas');canvas.width=1200;canvas.height=650;section.append(title,canvas);host.appendChild(section);
+    const ctx=canvas.getContext('2d'),W=1200,H=650,pad={l:72,r:28,t:46,b:105};ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H);
+    if(rs.length)bars(ctx,W,H,pad,rs.map(r=>r.date),rs.map(r=>Number(r[squad])||0),'Members',true);else drawEmpty(ctx,W,H,'No entries yet');
+    ctx.fillStyle='#334155';ctx.font='bold 18px Arial';ctx.textAlign='left';ctx.fillText(squad+' membership history',pad.l,25);
+  });
+}
+function printFullReport(){preparePrintReport();setTimeout(()=>window.print(),80)}
+
+function parseCsv(text){
+  const rows=[];let row=[],cell='',quoted=false;
+  for(let i=0;i<text.length;i++){const c=text[i],n=text[i+1];if(quoted){if(c==='"'&&n==='"'){cell+='"';i++}else if(c==='"')quoted=false;else cell+=c}else if(c==='"')quoted=true;else if(c===','){row.push(cell.trim());cell=''}else if(c==='\n'){row.push(cell.trim());if(row.some(v=>v!==''))rows.push(row);row=[];cell=''}else if(c!=='\r')cell+=c}
+  row.push(cell.trim());if(row.some(v=>v!==''))rows.push(row);return rows;
+}
+function normalizeDate(value){
+  const v=String(value||'').trim();if(!v)return'';if(/^\d{4}-\d{2}-\d{2}$/.test(v))return v;
+  let m=v.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{2,4})$/);
+  if(m){let a=+m[1],b=+m[2],y=+m[3];if(y<100)y+=2000;let month=a,day=b;if(a>12){day=a;month=b}return `${y}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`}
+  const d=new Date(v);if(!Number.isNaN(d.getTime()))return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;return'';
+}
+function importCsv(text){
+  const rows=parseCsv(text);if(rows.length<2)throw new Error('The CSV does not contain enough rows.');
+  const header=rows[0].map(x=>x.replace(/^\uFEFF/,'').trim()),first=(header[0]||'').toLowerCase();let newData;
+  if(first==='date'||first==='snapshot date'||first==='entry date'){
+    const ignored=new Set(['district total','total']);const squadrons=header.slice(1).filter(h=>h&&!ignored.has(h.toLowerCase()));const records=[];
+    for(const row of rows.slice(1)){const date=normalizeDate(row[0]);if(!date)continue;const rec={date};squadrons.forEach(s=>{const i=header.indexOf(s);rec[s]=Math.max(0,Math.round(Number(String(row[i]??'').replace(/,/g,''))||0))});records.push(rec)}
+    if(!records.length||!squadrons.length)throw new Error('No valid dates or squadron columns were found.');newData={squadrons,records};
+  }else{
+    const dateCols=header.slice(1).map((h,i)=>({index:i+1,date:normalizeDate(h)})).filter(x=>x.date);
+    if(!dateCols.length)throw new Error('The first row must contain Date followed by squadron names, or Squadron followed by date columns.');
+    const squadRows=rows.slice(1).filter(r=>String(r[0]||'').trim()&&!/total/i.test(String(r[0]))),squadrons=squadRows.map(r=>String(r[0]).trim());
+    const records=dateCols.map(dc=>{const rec={date:dc.date};squadRows.forEach(r=>rec[String(r[0]).trim()]=Math.max(0,Math.round(Number(String(r[dc.index]??'').replace(/,/g,''))||0)));return rec});
+    if(!records.length||!squadrons.length)throw new Error('No valid squadron rows were found.');newData={squadrons,records};
+  }
+  const byDate=new Map();newData.records.forEach(r=>byDate.set(r.date,r));newData.records=[...byDate.values()].sort((a,b)=>a.date.localeCompare(b.date));
+  const d=state();
+  if((d.records.length||d.squadrons.length)&&!confirm('Replace the active district\'s current squadron list and records with this CSV?'))return;
+  d.squadrons=newData.squadrons;d.records=newData.records;buildDistrictInterface();render();
+  setStatus(`CSV loaded into ${d.name}: ${d.records.length} entries, ${d.squadrons.length} squadrons`);
+}
+
+function download(name,data,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);setStatus(name+' saved')}
+function buildActiveDistrictCsv(){
+  const d=clone(state());
+  const districtTotal=r=>d.squadrons.reduce((sum,s)=>sum+(Number(r[s])||0),0);
+  let rows=[['Date',...d.squadrons,'District Total']];
+  d.records.forEach(r=>rows.push([r.date,...d.squadrons.map(s=>r[s]||0),districtTotal(r)]));
+  return rows.map(r=>r.map(v=>{
+    const s=String(v??'');
+    return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;
+  }).join(',')).join('\n');
+}
+function exportCsv(){
+  saveLocal();
+  const d=clone(state());
+  download(slug(d.name)+'-membership-trending-'+new Date().toISOString().slice(0,10)+'.csv',buildActiveDistrictCsv(),'text/csv');
+}
+function saveDistrictJson(){
+  saveLocal();
+  const d=clone(state());
+  download(slug(d.name)+'-membership-trending-'+new Date().toISOString().slice(0,10)+'.json',
+    JSON.stringify({type:'district',version:'2.1.2',savedAt:new Date().toISOString(),district:d},null,2),'application/json');
+}
+function saveDistrictFiles(){
+  saveLocal();
+  const d=clone(state());
+  const stamp=new Date().toISOString().slice(0,10);
+  download(slug(d.name)+'-membership-trending-'+stamp+'.csv',buildActiveDistrictCsv(),'text/csv');
+  setTimeout(()=>download(slug(d.name)+'-membership-trending-'+stamp+'.json',
+    JSON.stringify({type:'district',version:'2.1.2',savedAt:new Date().toISOString(),district:d},null,2),'application/json'),250);
+  setStatus(d.name+' saved: '+d.records.length+' entries exported to CSV and JSON');
+}
+function saveWorkspaceJson(){
+  saveLocal();
+  const snapshot=clone(workspace);
+  download('multi-district-membership-workspace-'+new Date().toISOString().slice(0,10)+'.json',
+    JSON.stringify({type:'workspace',savedAt:new Date().toISOString(),...snapshot},null,2),'application/json');
+}
+function restoreDistrictJson(text){
+  const d=JSON.parse(text);const incoming=d.district||d;
+  if(!incoming||!Array.isArray(incoming.squadrons)||!Array.isArray(incoming.records))throw new Error('This is not a valid district backup.');
+  const name=String(incoming.name||'Imported District');
+  const existing=workspace.districts.find(x=>x.name.toLowerCase()===name.toLowerCase());
+  if(existing&&confirm(name+' already exists. Replace that district?')){
+    existing.squadrons=incoming.squadrons.map(String);existing.records=incoming.records;workspace.activeDistrictId=existing.id;
+  }else{
+    const nd={id:makeId(),name,squadrons:incoming.squadrons.map(String),records:incoming.records};workspace.districts.push(nd);workspace.activeDistrictId=nd.id;
+  }
+  renderDistrictSelector();buildDistrictInterface();render();setStatus(name+' district backup restored');
+}
+function restoreWorkspaceJson(text){
+  const d=JSON.parse(text);if(!d||!Array.isArray(d.districts)||!d.districts.length)throw new Error('This is not a valid multi-district workspace backup.');
+  if(!confirm('Replace the entire current workspace with this backup?'))return;
+  workspace={version:2,activeDistrictId:d.activeDistrictId,districts:d.districts};
+  if(!workspace.districts.some(x=>x.id===workspace.activeDistrictId))workspace.activeDistrictId=workspace.districts[0].id;
+  renderDistrictSelector();buildDistrictInterface();render();setStatus('All districts restored');
+}
+
+$('districtSelect').addEventListener('change',e=>{workspace.activeDistrictId=e.target.value;buildDistrictInterface();render();clearForm();setStatus(state().name+' selected')})
+$('newDistrict').addEventListener('click',()=>openManager('new'));
+$('editDistrict').addEventListener('click',()=>openManager('edit'));
+$('cancelDistrict').addEventListener('click',closeManager);
+$('saveDistrict').addEventListener('click',saveDistrictSetup);
+$('deleteDistrict').addEventListener('click',deleteActiveDistrict);
+$('loadEntry').addEventListener('click',()=>{const d=$('existingEntry').value;if(!d){alert('Select an existing entry first.');return}loadForm(d)});
+$('existingEntry').addEventListener('change',e=>{if(e.target.value)loadForm(e.target.value)});
+$('deleteSelectedEntry').addEventListener('click',()=>deleteRecord($('existingEntry').value));
+$('addRecord').addEventListener('click',addRecord);$('clearForm').addEventListener('click',clearForm);$('deleteRecord').addEventListener('click',deleteRecord);
+$('saveDistrictFiles').addEventListener('click',saveDistrictFiles);$('saveDistrictJson').addEventListener('click',saveDistrictJson);$('saveWorkspaceJson').addEventListener('click',saveWorkspaceJson);$('exportCsv').addEventListener('click',exportCsv);$('printReport').addEventListener('click',printFullReport);
+$('chartType').addEventListener('change',drawSquadronChart);$('dateRange').addEventListener('change',drawCharts);$('seriesSelect').addEventListener('change',drawSquadronChart);$('entryBarDate').addEventListener('change',drawEntryBarChart);$('individualSquadron').addEventListener('change',drawIndividualBarChart);$('individualRange').addEventListener('change',drawIndividualBarChart);window.addEventListener('resize',drawCharts);
+$('loadCsv').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{try{importCsv(rd.result)}catch(err){alert('Could not load CSV: '+err.message)}finally{e.target.value=''}};rd.readAsText(f)});
+$('loadDistrictJson').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{try{restoreDistrictJson(rd.result)}catch(err){alert(err.message)}finally{e.target.value=''}};rd.readAsText(f)});
+$('loadWorkspaceJson').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{try{restoreWorkspaceJson(rd.result)}catch(err){alert(err.message)}finally{e.target.value=''}};rd.readAsText(f)});
+$('restoreNiagara').addEventListener('click',()=>{
+  let d=workspace.districts.find(x=>x.id==='niagara'||x.name.toLowerCase()==='niagara district');
+  if(!confirm('Restore the original Niagara District squadron list and historical data?'))return;
+  if(!d){d=createNiagaraDistrict();workspace.districts.push(d)}else{d.name='Niagara District';d.squadrons=clone(NIAGARA_ORIGINAL.squadrons);d.records=clone(NIAGARA_ORIGINAL.records)}
+  workspace.activeDistrictId=d.id;renderDistrictSelector();buildDistrictInterface();render();setStatus('Original Niagara data restored');
+});
+
+loadLocal();init();setStatus(workspace.districts.length+' district'+(workspace.districts.length===1?'':'s')+' available');
+</script>
+</body>
+</html>
